@@ -61,7 +61,7 @@ def chat():
         # Set up the chat prompt with memory
         prompt = ChatPromptTemplate.from_messages(
             [
-                SystemMessage(content="You are a friendly NASA assistant."),
+                SystemMessage(content="You are a friendly NASA assistant named Astro."),
                 MessagesPlaceholder(variable_name="chat_history"),
                 HumanMessagePromptTemplate.from_template("{human_input}")
             ]
