@@ -24,31 +24,54 @@ document.getElementById('chat-input').addEventListener('input', function() {
     autoResizeTextarea(this); // Adjust textarea height on input
 });
 
+// Function to generate a simple session ID (or use UUID)
+function generateSessionId() {
+    return '_' + Math.random().toString(36).substr(2, 9);
+}
+
+// Function to get or create a session ID (stored in localStorage)
+function getSessionId() {
+    let sessionId = localStorage.getItem('sessionId');
+    if (!sessionId) {
+        sessionId = generateSessionId();
+        localStorage.setItem('sessionId', sessionId);
+    }
+    return sessionId;
+}
+
 async function sendMessage() {
     const input = document.getElementById('chat-input');
     const message = input.value.trim();
+    const sessionId = getSessionId(); // Ensure this function returns a valid sessionId
+
     if (message) {
         addMessage('user', message);
         input.value = '';
         autoResizeTextarea(input); // Reset the height after sending
 
-         // Show the typing indicator
-         showTypingIndicator();
-         
-         // Send message to the server
-        const response = await fetch('/api/chat', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ question: message }),
-        });
-        const data = await response.json();
+        // Show the typing indicator
+        showTypingIndicator();
 
-        // Hide the typing indicator
-        hideTypingIndicator();
+        try {
+            // Send message to the server
+            const response = await fetch('/api/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ message: message, sessionId: sessionId }), // Send message and sessionId
+            });
+            const data = await response.json();
 
-        addMessage('bot', data.answer);
+            // Hide the typing indicator
+            hideTypingIndicator();
+
+            addMessage('bot', data.response); // Use the correct key "response"
+        } catch (error) {
+            console.error('Error:', error);
+            hideTypingIndicator();
+            addMessage('bot', 'Sorry, something went wrong. Please try again.');
+        }
     }
 }
 
