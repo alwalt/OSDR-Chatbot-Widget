@@ -7,7 +7,7 @@ const port = process.env.PORT || 3000;
 app.use(bodyParser.json());
 app.use(express.static('public'));
 
-app.post('/api/chat', async (req, res) => {
+app.post('/api/chat/', async (req, res) => {
     console.log('Request Body:', req.body);  // Log the request body to ensure sessionId is included
     const userMessage = req.body.message;
     const sessionId = req.body.sessionId;
@@ -18,7 +18,7 @@ app.post('/api/chat', async (req, res) => {
     }
 
     try {
-        const response = await axios.post('http://localhost:5000/chat', {
+        const response = await axios.post('http://localhost:8000/chat/', {
             message: userMessage,
             sessionId: sessionId
         }, {

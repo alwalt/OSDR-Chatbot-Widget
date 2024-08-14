@@ -4,12 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chat Widget Test</title>
-    <link rel="stylesheet" href="chat-widget.css">
+
+    <!-- Load static files -->
+    {% load static %}
+
+    <!-- Link to CSS file -->
+    <link rel="stylesheet" href="{% static 'chat_ui/css/chat-widget.css' %}">
 </head>
 <body>
     <!-- Chat Button Icon -->
     <div class="chat-button" id="chat-button">
-        <img src="chat-icon-label.png" alt="Chat Icon" />
+        <img src="{% static 'chat_ui/images/chat-icon-label.png' %}" alt="Chat Icon" />
     </div>
 
     <!-- Chat Widget -->
@@ -22,7 +27,7 @@
         </div>
     </div>
 
-    <script src="chat-widget.js"></script>
+    <!-- Link to JavaScript file -->
+    <script src="{% static 'chat_ui/js/chat-widget.js' %}"></script>
 </body>
 </html>
-
