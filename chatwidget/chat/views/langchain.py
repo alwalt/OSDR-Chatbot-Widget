@@ -3,12 +3,10 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from langchain_core.prompts import (
     ChatPromptTemplate,
-    HumanMessagePromptTemplate,
     MessagesPlaceholder,
 )
 from langchain_core.messages import SystemMessage
 from langchain_openai import ChatOpenAI
-from langchain.memory import ConversationBufferMemory
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
 # from langchain.chains import RetrievalQA
@@ -17,8 +15,6 @@ from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_core.runnables.history import RunnableWithMessageHistory
 from langchain_community.chat_message_histories import ChatMessageHistory
 from langchain_core.chat_history import BaseChatMessageHistory
-from langchain_core.output_parsers import StrOutputParser
-from langchain_core.runnables import RunnablePassthrough, RunnableLambda
 import httpx
 import json
 
@@ -41,6 +37,24 @@ def cleanup_sessions():
     for session_id in expired_sessions:
         del memory_store[session_id]
 
+def get_session_history(session_id: str) -> ChatMessageHistory:
+    # Cleanup expired sessions
+    cleanup_sessions()
+
+    # Initialize or retrieve memory for this session
+    if session_id not in memory_store:
+        memory_store[session_id] = {
+            'memory': ChatMessageHistory(),  # Use ChatMessageHistory to store the conversation
+            'timestamp': time.time()  # Store the timestamp for session expiration management
+        }
+
+    # Update the timestamp each time the session is accessed
+    session_data = memory_store[session_id]
+    session_data['timestamp'] = time.time()  # Refresh the last access time
+
+    # Return the memory object (chat history)
+    return session_data['memory']
+
 
 def load_vector_store():
     # Load the HuggingFace embeddings
@@ -48,19 +62,6 @@ def load_vector_store():
 
     # Load the FAISS vector store with the embeddings
     return FAISS.load_local("faiss_index", embeddings, allow_dangerous_deserialization=True)
-
-# def format_docs(docs):
-#     formatted_texts = []
-#     for doc in docs:
-#         content = doc.page_content
-#         # print('content:', content, '\n')
-#         metadata = doc.metadata
-#         # print('metadata:', metadata, '\n')
-#         formatted_text = f"Study: {metadata.get('Study', '')}\nTitle: {metadata.get('Title', '')}\nOrganism: {metadata.get('Organism', '')}\nDescription: {metadata.get('Description','')}"
-#         # print('formatted_text:', formatted_text, '\n')
-#         print('XXXXXXXXX', metadata.get('Title', ''))
-#         formatted_texts.append(formatted_text)
-#     return "\n\n".join(formatted_texts)
 
 def chat(request):
     if request.method == 'POST':
@@ -73,41 +74,12 @@ def chat(request):
             if not user_input or not session_id:
                 return JsonResponse({'error': 'Invalid request'}, status=400)
             
-            ### Statefully manage chat history ###
-            store = {}
+            # Cleanup expired sessions
+            cleanup_sessions()
 
-            def get_session_history(session_id: str) -> BaseChatMessageHistory:
-                if session_id not in store:
-                    store[session_id] = ChatMessageHistory()
-                return store[session_id]
-
-
-            # # Cleanup expired sessions
-            # cleanup_sessions()
-
-            # # Initialize or retrieve memory for this session
-            # if session_id not in memory_store:
-            #     memory_store[session_id] = {
-            #         'memory': ConversationBufferMemory(memory_key="chat_history", return_messages=True),
-            #         'timestamp': time.time()
-            #     }
-
-            # session_data = memory_store[session_id]
-            # session_data['timestamp'] = time.time()  # Update the last access time
-
-            # memory = session_data['memory']
-
-            # print(type(memory))
-
-            # Set up the chat prompt with memory
-            # prompt = ChatPromptTemplate.from_messages(
-            #     [
-            #         SystemMessage(content="You are a NASA assistant for question-answering tasks."),
-            #         MessagesPlaceholder(variable_name="chat_history"),
-            #         HumanMessagePromptTemplate.from_template("{human_input}")
-            #     ]
-            # )
-
+            # Get or initialize session history
+            store = get_session_history(session_id)
+            
             # Load the vector store for RAG
             vector_store = load_vector_store()
             retriever = vector_store.as_retriever()
@@ -123,10 +95,13 @@ def chat(request):
             )
 
             ### Contextualize question ###
-            contextualize_q_system_prompt = """Given a chat history and the latest user question \
-            which might reference context in the chat history, formulate a standalone question \
-            which can be understood without the chat history. Do NOT answer the question, \
-            just reformulate it if needed and otherwise return it as is."""
+            contextualize_q_system_prompt = (
+                "Given a chat history and the latest user question "
+                "which might reference context in the chat history, "
+                "formulate a standalone question which can be understood "
+                "without the chat history. Do NOT answer the question, "
+                "just reformulate it if needed and otherwise return it as is."
+            )
             contextualize_q_prompt = ChatPromptTemplate.from_messages(
                 [
                     ("system", contextualize_q_system_prompt),
@@ -139,12 +114,15 @@ def chat(request):
             )
 
             ### Answer question ###
-            qa_system_prompt = """You are an assistant for question-answering tasks. \
-            Use the following pieces of retrieved context to answer the question. \
-            If you don't know the answer, just say that you don't know. \
-            Use three sentences maximum and keep the answer concise.\
-
-            {context}"""
+            qa_system_prompt = (
+                "You are an assistant for question-answering tasks. "
+                "Use the following pieces of retrieved context to answer "
+                "the question. If you don't know the answer, say that you "
+                "don't know. Use three sentences maximum and keep the "
+                "answer concise."
+                "\n\n"
+                "{context}"
+            )
             qa_prompt = ChatPromptTemplate.from_messages(
                 [
                     ("system", qa_system_prompt),
@@ -163,6 +141,8 @@ def chat(request):
                 history_messages_key="chat_history",
                 output_messages_key="answer",
             )
+
+            # print(conversational_rag_chain)
 
             result = conversational_rag_chain.invoke(
             {"input": user_input},

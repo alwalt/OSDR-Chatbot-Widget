@@ -13,13 +13,13 @@ def load_and_process_csv(file_path):
         # Metadata columns for context during retrieval
         csv_args={
             'delimiter': ',',
-            # 'quotechar': '"', 
+            'quotechar': '"', 
         },
-        encoding = "utf-8",
+        # encoding = "utf-8",
     )
     documents = loader.load()
 
-    print(documents[0])
+    # print(documents)
 
     # # Optional: Further filter out the metadata to focus only on specific columns if needed
     # filtered_documents = []
