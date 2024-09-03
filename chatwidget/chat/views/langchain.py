@@ -5,7 +5,7 @@ from langchain_core.prompts import (
     ChatPromptTemplate,
     MessagesPlaceholder,
 )
-from langchain_core.messages import SystemMessage
+# from langchain_core.messages import SystemMessage
 from langchain_openai import ChatOpenAI
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
@@ -14,7 +14,7 @@ from langchain.chains import create_history_aware_retriever, create_retrieval_ch
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_core.runnables.history import RunnableWithMessageHistory
 from langchain_community.chat_message_histories import ChatMessageHistory
-from langchain_core.chat_history import BaseChatMessageHistory
+# from langchain_core.chat_history import BaseChatMessageHistory
 import httpx
 import json
 
@@ -23,7 +23,8 @@ memory_store = {}
 session_timeout = 3600  # Session expiry time in seconds (e.g., 1 hour)
 
 # Base URL of the local LLM API
-host = "https://ec2-35-95-160-121.us-west-2.compute.amazonaws.com/v1/"
+#host = "https://ec2-35-95-160-121.us-west-2.compute.amazonaws.com/v1/"
+host = "https://ec2-35-95-160-121.us-west-2.compute.amazonaws.com/serve/v1/"
 httpx_client = httpx.Client(verify=False)
 
 # API key for the local LLM instance (not used in this case)
@@ -74,15 +75,9 @@ def chat(request):
             if not user_input or not session_id:
                 return JsonResponse({'error': 'Invalid request'}, status=400)
             
-            # Cleanup expired sessions
-            cleanup_sessions()
-
-            # Get or initialize session history
-            store = get_session_history(session_id)
-            
             # Load the vector store for RAG
             vector_store = load_vector_store()
-            retriever = vector_store.as_retriever()
+            retriever = vector_store.as_retriever(search_kwargs={"k": 2})
 
             # Initialize the LLM using the local instance
             llm = ChatOpenAI(
@@ -142,22 +137,15 @@ def chat(request):
                 output_messages_key="answer",
             )
 
-            # print(conversational_rag_chain)
-
             result = conversational_rag_chain.invoke(
             {"input": user_input},
             config={
                 "configurable": {"session_id": session_id}
-            },  # constructs a key "abc123" in `store`.
+            },
             )["answer"]
 
-            # print(result)
-            
             # Extract the response content and ensure it's a string
             response_content = result.content if hasattr(result, 'content') else str(result)
-
-            # # Update memory with the new interaction
-            # memory.save_context({"input": user_input}, {"output": response_content})
 
             # Return the response content
             return JsonResponse({"response": response_content})
