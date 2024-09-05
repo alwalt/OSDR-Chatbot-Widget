@@ -7,6 +7,6 @@ This project integrates scientific research data from NASA's Open Science Data R
 * Load Milvus vectorstore at boot
 * Construct Self-querying retriever for metadata filtering
 * Start vLLM on boot
-* Stream LLM output
+* <s>Stream LLM output</s>
 * Create new slug for webpage
 * <s>Hide idling bubble while streaming.</s>
