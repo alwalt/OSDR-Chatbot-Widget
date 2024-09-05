@@ -9,17 +9,14 @@ from langchain_core.prompts import (
     MessagesPlaceholder,
 )
 from langchain_openai import ChatOpenAI
-from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain.chains import create_history_aware_retriever, create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_core.runnables.history import RunnableWithMessageHistory
 from langchain_community.chat_message_histories import ChatMessageHistory
-from langchain_milvus import Milvus
-
+from chat.utils.vector_store import vector_store
 import os
-os.environ["TOKENIZERS_PARALLELISM"] = "false"
-print('hello')
 
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 # In-memory store for session-based conversation memory with expiry
 memory_store = {}
@@ -57,22 +54,6 @@ def get_session_history(session_id: str) -> ChatMessageHistory:
 
     # Return the memory object (chat history)
     return session_data['memory']
- 
-# TODO: Needs to be intialized at django app boot to prevent multiple loads
-# Function to initialize and load the Milvus connection and collection
-def load_vector_store():
-    embeddings = HuggingFaceEmbeddings(model_name='sentence-transformers/all-MiniLM-L12-v2')
-    URI = "./milvus_osdr_lc.db"
-    COLLECTION_NAME = "MilvusDocsOSDR"
-
-    vector_store_loaded = Milvus(
-        embedding_function=embeddings,
-        connection_args={"uri": URI},
-        collection_name=COLLECTION_NAME,
-    )
-    
-    return vector_store_loaded
-    
 
 def chat(request):
     if request.method == 'POST':
@@ -101,17 +82,8 @@ def chat(request):
                 http_client=httpx_client,
                 streaming=True,
             )
-            
-            # print('about to stream')
-            
-            # chunks = []
-            # for chunk in llm.stream("what color is the sky?"):
-            #     chunks.append(chunk)
-            #     print(chunk.content)
-            #     print(chunk.content, end="|", flush=True)
-            
 
-            vector_store = load_vector_store()
+            # Load Milvus vector db
             retriever = vector_store.as_retriever(
                 search_type="mmr",
                 search_kwargs={"k": 1, "fetch_k": 2, "lambda_mult": 0.5},
@@ -172,14 +144,6 @@ def chat(request):
                     {"input": user_input},
                     config={"configurable": {"session_id": session_id}},
                 ):
-                    # # print(chunk)
-                    # # Safely extract the 'answer' key if it exists
-                    # if "answer" in chunk:
-                    #     yield chunk["answer"]  # Streaming only the answer part
-                    # else:
-                    #     yield ""  # Yield an empty string if 'answer' is not in the chunk
-
-                    # Safely extract the 'answer' key if it exists
                     try:
                 # Only yield chunks that have a valid 'answer' and skip others
                         if "answer" in chunk and chunk["answer"].strip():
@@ -188,53 +152,7 @@ def chat(request):
                         # Log the exception for debugging and yield an error message
                         yield f"[Error occurred: {str(e)}]"
 
-                # print(result)
-
-                # # Stream the LLM result in chunks (CREATING A NEW CONVO)
-                # for chunk in llm.stream(result):
-                #     yield f"{chunk.content}"
-
-                # for chunk in llm.stream("what color is the sky?"):
-                #     chunks.append(chunk)
-                #     print(chunk.content)
-                #     print(chunk.content, end="|", flush=True)
-
-
-            # Return a StreamingHttpResponse to send chunks to the client
-            # print(StreamingHttpResponse(generate_response(), content_type='text/plain'))
-            print('hELLO?')
             return StreamingHttpResponse(generate_response(), content_type='text/plain')
-
-                # Stream the LLM result in chunks
-                # for chunk in llm.stream(result):
-                #     # Stream each chunk
-                #     yield chunk.content + '\n'  # Yield each chunk of content
-
-            # Return a StreamingHttpResponse to send chunks to the client
-            # return StreamingHttpResponse(generate_response(), content_type='text/plain')
-
-            # result = conversational_rag_chain.invoke(
-            # {"input": user_input},
-            # config={
-            #     "configurable": {"session_id": session_id}
-            # },
-            # )["answer"]
-
-
-            # Check memory store
-            # def print_memory_store():
-            #     # Use pprint to print the memory store in a readable format
-            #     pprint.pprint(memory_store)
-
-            # # Example usage in your code
-            # print_memory_store()
-
-
-            # Extract the response content and ensure it's a string
-            response_content = result.content if hasattr(result, 'content') else str(result)
-
-            # Return the response content
-            return JsonResponse({"response": response_content})
 
         except Exception as e:
             print(f"Error: {e}")
