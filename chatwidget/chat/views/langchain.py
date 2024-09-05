@@ -3,6 +3,7 @@ import httpx
 import json
 import torch
 from django.http import JsonResponse
+from django.http import StreamingHttpResponse
 from langchain_core.prompts import (
     ChatPromptTemplate,
     MessagesPlaceholder,
@@ -17,6 +18,7 @@ from langchain_milvus import Milvus
 
 import os
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
+print('hello')
 
 
 # In-memory store for session-based conversation memory with expiry
@@ -96,7 +98,17 @@ def chat(request):
                 base_url=host,
                 timeout=None,
                 api_key=OPENAI_API_KEY,
-                http_client=httpx_client,)
+                http_client=httpx_client,
+                streaming=True,
+            )
+            
+            # print('about to stream')
+            
+            # chunks = []
+            # for chunk in llm.stream("what color is the sky?"):
+            #     chunks.append(chunk)
+            #     print(chunk.content)
+            #     print(chunk.content, end="|", flush=True)
             
 
             vector_store = load_vector_store()
@@ -153,12 +165,60 @@ def chat(request):
                 output_messages_key="answer",
             )
 
-            result = conversational_rag_chain.invoke(
-            {"input": user_input},
-            config={
-                "configurable": {"session_id": session_id}
-            },
-            )["answer"]
+            # Generator to stream response chunks (WORKINGISH)
+            def generate_response():
+                # Iterate over the generator to extract the data
+                for chunk in conversational_rag_chain.stream(
+                    {"input": user_input},
+                    config={"configurable": {"session_id": session_id}},
+                ):
+                    # # print(chunk)
+                    # # Safely extract the 'answer' key if it exists
+                    # if "answer" in chunk:
+                    #     yield chunk["answer"]  # Streaming only the answer part
+                    # else:
+                    #     yield ""  # Yield an empty string if 'answer' is not in the chunk
+
+                    # Safely extract the 'answer' key if it exists
+                    try:
+                # Only yield chunks that have a valid 'answer' and skip others
+                        if "answer" in chunk and chunk["answer"].strip():
+                            yield chunk["answer"]
+                    except Exception as e:
+                        # Log the exception for debugging and yield an error message
+                        yield f"[Error occurred: {str(e)}]"
+
+                # print(result)
+
+                # # Stream the LLM result in chunks (CREATING A NEW CONVO)
+                # for chunk in llm.stream(result):
+                #     yield f"{chunk.content}"
+
+                # for chunk in llm.stream("what color is the sky?"):
+                #     chunks.append(chunk)
+                #     print(chunk.content)
+                #     print(chunk.content, end="|", flush=True)
+
+
+            # Return a StreamingHttpResponse to send chunks to the client
+            # print(StreamingHttpResponse(generate_response(), content_type='text/plain'))
+            print('hELLO?')
+            return StreamingHttpResponse(generate_response(), content_type='text/plain')
+
+                # Stream the LLM result in chunks
+                # for chunk in llm.stream(result):
+                #     # Stream each chunk
+                #     yield chunk.content + '\n'  # Yield each chunk of content
+
+            # Return a StreamingHttpResponse to send chunks to the client
+            # return StreamingHttpResponse(generate_response(), content_type='text/plain')
+
+            # result = conversational_rag_chain.invoke(
+            # {"input": user_input},
+            # config={
+            #     "configurable": {"session_id": session_id}
+            # },
+            # )["answer"]
 
 
             # Check memory store
