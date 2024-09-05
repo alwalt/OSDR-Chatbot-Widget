@@ -1,29 +1,29 @@
 import time
+import httpx
+import json
+import torch
 from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
 from langchain_core.prompts import (
     ChatPromptTemplate,
     MessagesPlaceholder,
 )
-# from langchain_core.messages import SystemMessage
 from langchain_openai import ChatOpenAI
 from langchain_community.embeddings import HuggingFaceEmbeddings
-from langchain_community.vectorstores import FAISS
-# from langchain.chains import RetrievalQA
 from langchain.chains import create_history_aware_retriever, create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_core.runnables.history import RunnableWithMessageHistory
 from langchain_community.chat_message_histories import ChatMessageHistory
-# from langchain_core.chat_history import BaseChatMessageHistory
-import httpx
-import json
+from langchain_milvus import Milvus
+
+import os
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
 
 # In-memory store for session-based conversation memory with expiry
 memory_store = {}
 session_timeout = 3600  # Session expiry time in seconds (e.g., 1 hour)
 
 # Base URL of the local LLM API
-#host = "https://ec2-35-95-160-121.us-west-2.compute.amazonaws.com/v1/"
 host = "https://ec2-35-95-160-121.us-west-2.compute.amazonaws.com/serve/v1/"
 httpx_client = httpx.Client(verify=False)
 
@@ -55,14 +55,22 @@ def get_session_history(session_id: str) -> ChatMessageHistory:
 
     # Return the memory object (chat history)
     return session_data['memory']
-
-
+ 
+# TODO: Needs to be intialized at django app boot to prevent multiple loads
+# Function to initialize and load the Milvus connection and collection
 def load_vector_store():
-    # Load the HuggingFace embeddings
-    embeddings = HuggingFaceEmbeddings(model_name='sentence-transformers/all-mpnet-base-v2')
+    embeddings = HuggingFaceEmbeddings(model_name='sentence-transformers/all-MiniLM-L12-v2')
+    URI = "./milvus_osdr_lc.db"
+    COLLECTION_NAME = "MilvusDocsOSDR"
 
-    # Load the FAISS vector store with the embeddings
-    return FAISS.load_local("faiss_index", embeddings, allow_dangerous_deserialization=True)
+    vector_store_loaded = Milvus(
+        embedding_function=embeddings,
+        connection_args={"uri": URI},
+        collection_name=COLLECTION_NAME,
+    )
+    
+    return vector_store_loaded
+    
 
 def chat(request):
     if request.method == 'POST':
@@ -75,18 +83,26 @@ def chat(request):
             if not user_input or not session_id:
                 return JsonResponse({'error': 'Invalid request'}, status=400)
             
-            # Load the vector store for RAG
-            vector_store = load_vector_store()
-            retriever = vector_store.as_retriever(search_kwargs={"k": 2})
+            # 1. Choose a model
+            MODELTORUN = "meta-llama/Meta-Llama-3.1-8B-Instruct"
 
-            # Initialize the LLM using the local instance
-            llm = ChatOpenAI(
-                model="meta-llama/Llama-2-7b-chat-hf",
+            # 2. Clear the GPU memory cache, you're going to need it all!
+            torch.cuda.empty_cache()
+
+            # 3. Instantiate a vLLM model instance.
+            llm = ChatOpenAI(model=MODELTORUN,
+                # enforce_eager=True,
                 temperature=0,
                 base_url=host,
                 timeout=None,
                 api_key=OPENAI_API_KEY,
-                http_client=httpx_client,
+                http_client=httpx_client,)
+            
+
+            vector_store = load_vector_store()
+            retriever = vector_store.as_retriever(
+                search_type="mmr",
+                search_kwargs={"k": 1, "fetch_k": 2, "lambda_mult": 0.5},
             )
 
             ### Contextualize question ###
@@ -109,8 +125,8 @@ def chat(request):
             )
 
             ### Answer question ###
-            qa_system_prompt = (
-                "You are an assistant for question-answering tasks. "
+            system_prompt = (
+                "You are an assistant for question-answering tasks for NASA's Open Science Data Repository (OSDR). "
                 "Use the following pieces of retrieved context to answer "
                 "the question. If you don't know the answer, say that you "
                 "don't know. Use three sentences maximum and keep the "
@@ -120,7 +136,7 @@ def chat(request):
             )
             qa_prompt = ChatPromptTemplate.from_messages(
                 [
-                    ("system", qa_system_prompt),
+                    ("system", system_prompt),
                     MessagesPlaceholder("chat_history"),
                     ("human", "{input}"),
                 ]
@@ -143,6 +159,16 @@ def chat(request):
                 "configurable": {"session_id": session_id}
             },
             )["answer"]
+
+
+            # Check memory store
+            # def print_memory_store():
+            #     # Use pprint to print the memory store in a readable format
+            #     pprint.pprint(memory_store)
+
+            # # Example usage in your code
+            # print_memory_store()
+
 
             # Extract the response content and ensure it's a string
             response_content = result.content if hasattr(result, 'content') else str(result)

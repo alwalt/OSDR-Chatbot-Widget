@@ -141,42 +141,52 @@ def create_vector_store(docs):
     print(f"Milvus insert time for {len(dict_list)} vectors: ", end="")
     print(f"{round(end_time - start_time, 2)} seconds")
 
-    # SAMPLE_QUESTION = "How did spaceflight affect SERCA?"
+    res = mc.describe_collection(
+    collection_name=COLLECTION_NAME
+    )
 
-    # # Embed the question using the same encoder.
-    # query_embeddings = torch.tensor(encoder.encode(SAMPLE_QUESTION))
+    print(res)
+    print('before flush')
 
-    # # Check the shape of query_embeddings
-    # # print("Shape of query_embeddings:", query_embeddings.shape)
-    # # q_embed_shape = int(query_embeddings)
+    SAMPLE_QUESTION = "How did spaceflight affect SERCA?"
 
-    # # Normalize embeddings to unit length.
-    # # query_embeddings = F.normalize(query_embeddings, p=2, dim=1)
-    # query_embeddings = F.normalize(query_embeddings, p=2, dim=-1)
+    # Embed the question using the same encoder.
+    query_embeddings = torch.tensor(encoder.encode(SAMPLE_QUESTION))
 
-    # # Convert the embeddings to list of list of np.float32.
-    # query_embeddings = list(map(np.float32, query_embeddings))
+    # Check the shape of query_embeddings
+    # print("Shape of query_embeddings:", query_embeddings.shape)
+    # q_embed_shape = int(query_embeddings)
 
-    # query_embeddings = [query_embeddings]
+    # Normalize embeddings to unit length.
+    # query_embeddings = F.normalize(query_embeddings, p=2, dim=1)
+    query_embeddings = F.normalize(query_embeddings, p=2, dim=-1)
+
+    # Convert the embeddings to list of list of np.float32.
+    query_embeddings = list(map(np.float32, query_embeddings))
+
+    query_embeddings = [query_embeddings]
 
 
-    # # Define metadata fields you can filter on.
-    # OUTPUT_FIELDS = list(dict_list[0].keys())
-    # OUTPUT_FIELDS.remove('vector')
+    # Define metadata fields you can filter on.
+    OUTPUT_FIELDS = list(dict_list[0].keys())
+    print('OUTPUT FIELDS', OUTPUT_FIELDS)
+    print('-------')
+    OUTPUT_FIELDS.remove('vector')
+    print('OUTPUT FIELDS', OUTPUT_FIELDS)
 
 
-    # # Define how many top-k results you want to retrieve.
-    # TOP_K = 2
+    # Define how many top-k results you want to retrieve.
+    TOP_K = 2
 
-    # # Run semantic vector search using your query and the vector database.
-    # results = mc.search(
-    #     COLLECTION_NAME,
-    #     data=query_embeddings,
-    #     output_fields=OUTPUT_FIELDS,
-    #     limit=TOP_K,
-    #     consistency_level="Eventually")
+    # Run semantic vector search using your query and the vector database.
+    results = mc.search(
+        COLLECTION_NAME,
+        data=query_embeddings,
+        output_fields=OUTPUT_FIELDS,
+        limit=TOP_K,
+        consistency_level="Eventually")
     
-    # print(results)
+    print(results)
 
 
 
