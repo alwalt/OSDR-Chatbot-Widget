@@ -7,3 +7,4 @@ This project integrates scientific research data from NASA's Open Science Data R
 * Load Milvus vectorstore at boot
 * Construct Self-querying retriever for metadata filtering
 * Start vLLM on boot
+* Stream LLM output
