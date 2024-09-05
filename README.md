@@ -8,3 +8,4 @@ This project integrates scientific research data from NASA's Open Science Data R
 * Construct Self-querying retriever for metadata filtering
 * Start vLLM on boot
 * Stream LLM output
+* Create new slug for webpage 
