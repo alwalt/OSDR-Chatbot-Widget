@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Widget Test</title>
+
+
+    <!-- Link to CSS file -->
+    <link rel="stylesheet" href="chat-widget.css">
+</head>
+<body>
+    <!-- Chat Button Icon -->
+    <div class="chat-button" id="chat-button">
+        <img src="chat-icon-label.png" alt="Chat Icon" />
+    </div>
+
+    <!-- Chat Widget -->
+    <div class="chat-widget" id="chat-widget" style="display: none;">
+        <div class="chat-header">OSDR AI Assistant (Beta)</div>
+        <div class="chat-history" id="chat-history"></div>
+        <div class="chat-input">
+            <textarea id="chat-input" placeholder="Type your message..."></textarea>
+            <button onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+
+    <!-- Link to JavaScript file -->
+    <script src="chat-widget.js"></script>
+</body>
+</html>

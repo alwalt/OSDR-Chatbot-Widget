@@ -17,7 +17,8 @@ memory_store = {}
 session_timeout = 3600  # Session expiry time in seconds (e.g., 1 hour)
 
 # Base URL of the local LLM API
-host = "https://ec2-35-95-160-121.us-west-2.compute.amazonaws.com/v1/"
+#host = "https://ec2-35-95-160-121.us-west-2.compute.amazonaws.com/v1/"
+
 httpx_client = httpx.Client(verify=False)
 
 # API key for the local LLM instance (not used in this case)
