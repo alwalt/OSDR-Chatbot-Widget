@@ -6,11 +6,12 @@ This project integrates scientific research data from NASA's Open Science Data R
 ## TODO:
 * <s>Load Milvus vectorstore at boot</s>
 * Construct Self-querying retriever for metadata filtering
-* Start vLLM on boot
+* <s> Start vLLM on boot
 * <s>Stream LLM output</s>
-* Create new slug for webpage
+* Create a study summary page
+** Create new slug for webpage
 * <s>Hide idling bubble while streaming.</s>
-* Handling memory (db vs local)
+* <s>Handling memory (db vs local)</s>
 * Handle timeouts and chat abuse
 * Add API key
 * Add sources
