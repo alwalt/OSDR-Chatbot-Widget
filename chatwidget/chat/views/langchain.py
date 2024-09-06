@@ -1,59 +1,27 @@
-import time
-import httpx
+# langchain.py
+import os
 import json
-import torch
 from django.http import JsonResponse
 from django.http import StreamingHttpResponse
-from langchain_core.prompts import (
-    ChatPromptTemplate,
-    MessagesPlaceholder,
-)
-from langchain_openai import ChatOpenAI
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain.chains import create_history_aware_retriever, create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_core.runnables.history import RunnableWithMessageHistory
 from langchain_community.chat_message_histories import ChatMessageHistory
 from chat.utils.vector_store import vector_store
-import os
+from chat.utils.llm import load_llm
+from chat.utils.memory import get_session_history
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
-# In-memory store for session-based conversation memory with expiry
-memory_store = {}
-session_timeout = 3600  # Session expiry time in seconds (e.g., 1 hour)
+# Load LLM model from load_llm.py
+llm = load_llm()
 
-# Base URL of the local LLM API
-host = "https://ec2-35-95-160-121.us-west-2.compute.amazonaws.com/serve/v1/"
-httpx_client = httpx.Client(verify=False)
-
-# API key for the local LLM instance (not used in this case)
-OPENAI_API_KEY = "EMPTY"
-
-def cleanup_sessions():
-    """Remove expired sessions from memory."""
-    current_time = time.time()
-    expired_sessions = [session_id for session_id, data in memory_store.items()
-                        if current_time - data['timestamp'] > session_timeout]
-    for session_id in expired_sessions:
-        del memory_store[session_id]
-
-def get_session_history(session_id: str) -> ChatMessageHistory:
-    # Cleanup expired sessions
-    cleanup_sessions()
-
-    # Initialize or retrieve memory for this session
-    if session_id not in memory_store:
-        memory_store[session_id] = {
-            'memory': ChatMessageHistory(),  # Use ChatMessageHistory to store the conversation
-            'timestamp': time.time()  # Store the timestamp for session expiration management
-        }
-
-    # Update the timestamp each time the session is accessed
-    session_data = memory_store[session_id]
-    session_data['timestamp'] = time.time()  # Refresh the last access time
-
-    # Return the memory object (chat history)
-    return session_data['memory']
+# Load Milvus vector db from vector_store.py
+retriever = vector_store.as_retriever(
+    search_type="mmr",
+    search_kwargs={"k": 1, "fetch_k": 2, "lambda_mult": 0.5},
+)
 
 def chat(request):
     if request.method == 'POST':
@@ -65,29 +33,6 @@ def chat(request):
 
             if not user_input or not session_id:
                 return JsonResponse({'error': 'Invalid request'}, status=400)
-            
-            # 1. Choose a model
-            MODELTORUN = "meta-llama/Meta-Llama-3.1-8B-Instruct"
-
-            # 2. Clear the GPU memory cache, you're going to need it all!
-            torch.cuda.empty_cache()
-
-            # 3. Instantiate a vLLM model instance.
-            llm = ChatOpenAI(model=MODELTORUN,
-                # enforce_eager=True,
-                temperature=0,
-                base_url=host,
-                timeout=None,
-                api_key=OPENAI_API_KEY,
-                http_client=httpx_client,
-                streaming=True,
-            )
-
-            # Load Milvus vector db
-            retriever = vector_store.as_retriever(
-                search_type="mmr",
-                search_kwargs={"k": 1, "fetch_k": 2, "lambda_mult": 0.5},
-            )
 
             ### Contextualize question ###
             contextualize_q_system_prompt = (
@@ -131,13 +76,13 @@ def chat(request):
 
             conversational_rag_chain = RunnableWithMessageHistory(
                 rag_chain,
-                get_session_history,
+                get_session_history, # Redis in-memory cache
                 input_messages_key="input",
                 history_messages_key="chat_history",
                 output_messages_key="answer",
             )
 
-            # Generator to stream response chunks (WORKINGISH)
+            # Generator to stream response chunks 
             def generate_response():
                 # Iterate over the generator to extract the data
                 for chunk in conversational_rag_chain.stream(

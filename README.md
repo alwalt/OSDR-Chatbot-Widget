@@ -11,3 +11,6 @@ This project integrates scientific research data from NASA's Open Science Data R
 * Create new slug for webpage
 * <s>Hide idling bubble while streaming.</s>
 * Handling memory (db vs local)
+* Handle timeouts and chat abuse
+* Add API key
+* Add sources
