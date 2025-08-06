@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>NASA Open Science Data Repository</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans min-h-screen flex flex-col">
+
+  <!-- Header -->
+  <header class="bg-black text-white p-4 flex items-center justify-between shadow">
+    <h1 class="text-xl font-semibold tracking-wide">NASA | Open Science Data Repository</h1>
+    <nav class="space-x-4 text-sm">
+      <a href="#" class="hover:underline">Home</a>
+      <a href="#" class="hover:underline">Datasets</a>
+      <a href="#" class="hover:underline">API</a>
+      <a href="#" class="hover:underline">About</a>
+    </nav>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="bg-white p-10 text-center">
+    <h2 class="text-3xl font-bold text-gray-900 mb-2">Explore Open Access Bioscience Data</h2>
+    <p class="text-gray-600 max-w-2xl mx-auto">
+      The NASA Open Science Data Repository (OSDR) provides public access to omics, physiology, and experimental data
+      from spaceflight and ground studies. Search, explore, and contribute to the future of space biosciences.
+    </p>
+  </section>
+
+  <!-- Content -->
+  <main class="flex-1 container mx-auto p-6 space-y-8">
+    <!-- Search -->
+    <div class="max-w-xl mx-auto">
+      <label class="block text-sm font-medium text-gray-700 mb-1">Search datasets</label>
+      <input type="text" placeholder="e.g. OSD-488, muscle atrophy, mice"
+             class="w-full border border-gray-300 rounded px-4 py-2 shadow-sm focus:ring-blue-500 focus:border-blue-500">
+    </div>
+
+    <!-- Featured datasets -->
+    <section>
+      <h3 class="text-xl font-semibold mb-4">Featured Studies</h3>
+      <div class="grid gap-4 md:grid-cols-3">
+        <div class="bg-white p-4 border rounded shadow-sm">
+          <h4 class="font-bold">CBTM-2 (Muscle Atrophy)</h4>
+          <p class="text-sm text-gray-600 mt-1">13-day mouse spaceflight study investigating Amgen's muscle therapy.</p>
+        </div>
+        <div class="bg-white p-4 border rounded shadow-sm">
+          <h4 class="font-bold">RR-6 (Immune System)</h4>
+          <p class="text-sm text-gray-600 mt-1">Transcriptomics and immune profiling of mice flown aboard RR-6.</p>
+        </div>
+        <div class="bg-white p-4 border rounded shadow-sm">
+          <h4 class="font-bold">NSRR-18 (Lung Organoids)</h4>
+          <p class="text-sm text-gray-600 mt-1">Ground and ISS-grown organoids exposed to radiation analogs.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer class="bg-black text-gray-400 text-sm p-4 text-center">
+    © 2025 NASA Open Science. All rights reserved.
+  </footer>
+
+  <!-- Chatbot Widget -->
+  <chat-widget></chat-widget>
+  <!-- Load the component -->
+  <!-- DO NOT commit this file -->
+  <script src="./static/config.js"></script>
+  <script type="module">
+  window.addEventListener("DOMContentLoaded", () => {
+    // ensure widget initializes after full DOM load
+    import("./static/chat-widget.js");
+  });
+</script>
+
+</body>
+</html>
