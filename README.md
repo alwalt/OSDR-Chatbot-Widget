@@ -1,17 +1,7 @@
 # OSDR-Chatbot-Widget
 
 ## Project Overview
-This project integrates scientific research data from NASA's Open Science Data Repository (OSDR) into a Milvus vector database for efficient storage and retrieval. The project also includes a chatbot that uses the vector database to answer queries related to spaceflight studies and other scientific experiments stored in OSDR.
 
-## TODO:
-* <s>Load Milvus vectorstore at boot</s>
-* Construct Self-querying retriever for metadata filtering
-* <s> Start vLLM on boot
-* <s>Stream LLM output</s>
-* Create a study summary page
-** Create new slug for webpage
-* <s>Hide idling bubble while streaming.</s>
-* <s>Handling memory (db vs local)</s>
-* Handle timeouts and chat abuse
-* Add API key
-* Add sources
+This is a **demo frontpage** for the [NASA Open Science Data Repository (OSDR)](https://osdr.nasa.gov), showcasing a clean UI layout built with Tailwind CSS and a custom `<chat-widget>` that interacts with an external API.
+
+⚠️ **Note:** This is a non-production demo for front-end design and widget testing.
